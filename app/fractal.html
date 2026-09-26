@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Token Fractal v2</title>
+  <style>
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --border: #30363d;
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --accent: #58a6ff;
+  --accent-hover: #79b8ff;
+}
+
+body {
+  margin: 0;
+  font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+.app {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+header {
+  margin-bottom: 2rem;
+}
+
+h1 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem 0;
+}
+
+.subtitle {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.input-section {
+  margin-bottom: 1rem;
+}
+
+label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 0.5rem;
+}
+
+textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.9rem;
+  resize: vertical;
+}
+
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.controls {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.controls label {
+  margin-bottom: 0;
+}
+
+.controls select {
+  padding: 0.5rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.params-section {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.params-section h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem 0;
+  color: var(--muted);
+}
+
+.params-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem 1.25rem;
+  align-items: end;
+}
+
+.param-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.param-group label {
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.param-group input[type="number"] {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.param-group input[type="number"]:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.params-actions {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.julia-only {
+  display: none;
+}
+
+.julia-only.visible {
+  display: flex;
+}
+
+#save-btn {
+  padding: 0.5rem 1rem;
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+#save-btn:hover {
+  background: var(--accent-hover);
+}
+
+.btn-secondary {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.canvas-section {
+  margin-bottom: 2rem;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+#fractal-canvas {
+  display: block;
+  width: 100%;
+  max-width: 800px;
+  height: auto;
+  aspect-ratio: 16 / 10;
+  background: #000;
+}
+
+.output-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.output-section h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+#json-output {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  font-size: 0.8rem;
+  overflow-x: auto;
+  max-height: 300px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Token Fractal v2</h1>
+      <p class="subtitle">Adjustable formula parameters · text → colors</p>
+    </header>
+
+    <main>
+      <section class="input-section">
+        <label for="text-input">Input text (tokens: words, punctuation)</label>
+        <textarea id="text-input" placeholder="Enter text... Each token maps to a unique color." rows="4"></textarea>
+      </section>
+
+      <section class="controls">
+        <label for="fractal-type">Fractal type</label>
+        <select id="fractal-type">
+          <option value="julia">Julia</option>
+          <option value="mandelbrot">Mandelbrot</option>
+          <option value="burningShip">Burning Ship</option>
+          <option value="tricorn">Tricorn</option>
+        </select>
+        <label for="export-scale">Export resolution</label>
+        <select id="export-scale">
+          <option value="1">1× (800×500)</option>
+          <option value="2">2× (1600×1000)</option>
+          <option value="4">4× (3200×2000)</option>
+          <option value="8" selected>8× (6400×4000)</option>
+        </select>
+        <button id="randomize-btn" class="btn-secondary" title="Assign new random colors to tokens">Randomize colors</button>
+        <button id="save-btn" title="Save fractal as PNG">Save image</button>
+      </section>
+
+      <section class="params-section">
+        <h3>Formula parameters</h3>
+        <div class="params-grid">
+          <div id="param-c-real-wrap" class="param-group julia-only">
+            <label for="param-c-real">c (real)</label>
+            <input type="number" id="param-c-real" min="-2" max="2" step="0.01" value="-0.7">
+          </div>
+          <div id="param-c-imag-wrap" class="param-group julia-only">
+            <label for="param-c-imag">c (imag)</label>
+            <input type="number" id="param-c-imag" min="-2" max="2" step="0.01" value="0.27">
+          </div>
+          <div class="param-group">
+            <label for="param-zoom">Zoom</label>
+            <input type="number" id="param-zoom" min="0.2" max="20" step="0.1" value="1">
+          </div>
+          <div class="param-group">
+            <label for="param-offset-x">Offset X</label>
+            <input type="number" id="param-offset-x" min="-2" max="2" step="0.05" value="0">
+          </div>
+          <div class="param-group">
+            <label for="param-offset-y">Offset Y</label>
+            <input type="number" id="param-offset-y" min="-2" max="2" step="0.05" value="0">
+          </div>
+          <div class="param-group">
+            <label for="param-max-iter">Max iterations</label>
+            <input type="number" id="param-max-iter" min="16" max="1024" step="16" value="128">
+          </div>
+        </div>
+        <div class="params-actions">
+          <button id="derive-from-text-btn" class="btn-secondary" title="Set parameters from current text hash">Derive from text</button>
+        </div>
+      </section>
+
+      <section class="canvas-section">
+        <canvas id="fractal-canvas"></canvas>
+      </section>
+
+      <section class="output-section">
+        <div class="output-header">
+          <h2>JSON output</h2>
+          <button id="download-json-btn" class="btn-secondary" title="Download JSON file">Download JSON</button>
+          <button id="download-csv-btn" class="btn-secondary" title="Download word–RGB mapping as CSV">Download CSV</button>
+        </div>
+        <pre id="json-output"></pre>
+      </section>
+    </main>
+  </div>
+
+  <script>
+(function () {
+  "use strict";
+
+  const canvas = document.getElementById("fractal-canvas");
+  const ctx = canvas.getContext("2d");
+  const textInput = document.getElementById("text-input");
+  const jsonOutput = document.getElementById("json-output");
+  const saveBtn = document.getElementById("save-btn");
+  const exportScaleSelect = document.getElementById("export-scale");
+  const fractalTypeSelect = document.getElementById("fractal-type");
+  const randomizeBtn = document.getElementById("randomize-btn");
+  const downloadJsonBtn = document.getElementById("download-json-btn");
+  const downloadCsvBtn = document.getElementById("download-csv-btn");
+  const deriveFromTextBtn = document.getElementById("derive-from-text-btn");
+  const paramCReal = document.getElementById("param-c-real");
+  const paramCImag = document.getElementById("param-c-imag");
+  const paramZoom = document.getElementById("param-zoom");
+  const paramOffsetX = document.getElementById("param-offset-x");
+  const paramOffsetY = document.getElementById("param-offset-y");
+  const paramMaxIter = document.getElementById("param-max-iter");
+  const juliaOnlyWraps = document.querySelectorAll(".julia-only");
+
+  let colorSeed = "";
+
+  const W = 800;
+  const H = 500;
+
+  canvas.width = W;
+  canvas.height = H;
+
+  function hash(str) {
+    let h = 5381;
+    for (let i = 0; i < str.length; i++) {
+      h = ((h << 5) + h) ^ str.charCodeAt(i);
+    }
+    return (h >>> 0) & 0x7fffffff;
+  }
+
+  function tokenize(text) {
+    if (!text || !text.trim()) return [];
+    return text.match(/\S+/g) || [];
+  }
+
+  function tokenToRgb(token, seed) {
+    const h = hash(token + String(seed));
+    const r = (h >> 16) & 0xff;
+    const g = (h >> 8) & 0xff;
+    const b = h & 0xff;
+    return [r, g, b];
+  }
+
+  function buildColorMapping(tokens, seed) {
+    const s = seed ?? colorSeed;
+    const seen = new Set();
+    const mapping = {};
+    for (const t of tokens) {
+      if (!seen.has(t)) {
+        seen.add(t);
+        mapping[t] = tokenToRgb(t, s);
+      }
+    }
+    return mapping;
+  }
+
+  function buildPalette(colorMapping) {
+    const colors = Object.values(colorMapping);
+    if (colors.length === 0) return [[0, 0, 0]];
+    return colors;
+  }
+
+  function deriveFractalParamsFromText(text) {
+    const h = hash(text || "default");
+    const h2 = hash((text || "default") + "c");
+    const cReal = ((h % 4000) / 1000) - 2;
+    const cImag = ((h2 % 4000) / 1000) - 2;
+    const zoom = 1 + ((h % 100) / 100) * 2;
+    const offsetX = ((h2 % 100) / 50) - 1;
+    const offsetY = ((h % 100) / 50) - 1;
+    return { cReal, cImag, zoom, offsetX, offsetY };
+  }
+
+  function getParamsFromUI() {
+    const cReal = parseFloat(paramCReal.value) || 0;
+    const cImag = parseFloat(paramCImag.value) || 0;
+    const zoom = parseFloat(paramZoom.value) || 1;
+    const offsetX = parseFloat(paramOffsetX.value) || 0;
+    const offsetY = parseFloat(paramOffsetY.value) || 0;
+    const maxIter = Math.max(16, Math.min(1024, parseInt(paramMaxIter.value, 10) || 128));
+    return { cReal, cImag, zoom, offsetX, offsetY, maxIter };
+  }
+
+  function setParamsToUI(params) {
+    paramCReal.value = params.cReal.toFixed(4);
+    paramCImag.value = params.cImag.toFixed(4);
+    paramZoom.value = params.zoom.toFixed(2);
+    paramOffsetX.value = params.offsetX.toFixed(2);
+    paramOffsetY.value = params.offsetY.toFixed(2);
+  }
+
+  function toggleJuliaParams() {
+    const isJulia = fractalTypeSelect.value === "julia";
+    juliaOnlyWraps.forEach((el) => {
+      el.classList.toggle("visible", isJulia);
+    });
+  }
+
+  const FRACTAL_TYPES = {
+    julia: {
+      name: "Julia",
+      centerX: 0,
+      centerY: 0,
+      equation: (params) => {
+        const { cReal, cImag } = params;
+        return `z = z² + c, c = ${cReal.toFixed(4)} + ${cImag.toFixed(4)}i (Julia set)`;
+      },
+      iterate: (zr, zi, cReal, cImag) => {
+        const nr = zr * zr - zi * zi + cReal;
+        const ni = 2 * zr * zi + cImag;
+        return [nr, ni];
+      },
+      z0FromPixel: true,
+      cFromParams: true,
+    },
+    mandelbrot: {
+      name: "Mandelbrot",
+      centerX: -0.5,
+      centerY: 0,
+      equation: () => "z = z² + c, z₀ = 0, c = pixel position",
+      iterate: (zr, zi, cReal, cImag) => {
+        const nr = zr * zr - zi * zi + cReal;
+        const ni = 2 * zr * zi + cImag;
+        return [nr, ni];
+      },
+      z0FromPixel: false,
+      cFromParams: false,
+    },
+    burningShip: {
+      name: "Burning Ship",
+      centerX: -0.5,
+      centerY: -0.5,
+      equation: () => "z = (|Re(z)| + i|Im(z)|)² + c, c = pixel position",
+      iterate: (zr, zi, cReal, cImag) => {
+        const ar = Math.abs(zr);
+        const ai = Math.abs(zi);
+        const nr = ar * ar - ai * ai + cReal;
+        const ni = 2 * ar * ai + cImag;
+        return [nr, ni];
+      },
+      z0FromPixel: false,
+      cFromParams: false,
+    },
+    tricorn: {
+      name: "Tricorn",
+      centerX: -0.5,
+      centerY: 0,
+      equation: () => "z = (conjugate(z))² + c, c = pixel position",
+      iterate: (zr, zi, cReal, cImag) => {
+        const nr = zr * zr - zi * zi + cReal;
+        const ni = -2 * zr * zi + cImag;
+        return [nr, ni];
+      },
+      z0FromPixel: false,
+      cFromParams: false,
+    },
+  };
+
+  function getEquation(params, fractalType) {
+    return FRACTAL_TYPES[fractalType].equation(params);
+  }
+
+  function renderFractal(text, width, height, targetCtx) {
+    const w = width ?? W;
+    const h = height ?? H;
+    const target = targetCtx ?? ctx;
+    const fractalType = fractalTypeSelect.value;
+
+    const tokens = tokenize(text);
+    const colorMapping = buildColorMapping(tokens);
+    const palette = buildPalette(colorMapping);
+    const params = getParamsFromUI();
+
+    const { cReal, cImag, zoom, offsetX, offsetY, maxIter } = params;
+
+    const type = FRACTAL_TYPES[fractalType];
+    const scale = (2.5 / zoom) / Math.min(w, h);
+    const baseCenterX = type.centerX ?? 0;
+    const baseCenterY = type.centerY ?? 0;
+    const cx = baseCenterX - w * 0.5 * scale + offsetX * 0.5;
+    const cy = baseCenterY - h * 0.5 * scale + offsetY * 0.5;
+    const z0FromPixel = type.z0FromPixel;
+    const cFromParams = type.cFromParams;
+
+    const imageData = target.createImageData(w, h);
+    const data = imageData.data;
+    const palLen = palette.length;
+
+    function lerpColor(a, b, t) {
+      return [
+        Math.round(a[0] + (b[0] - a[0]) * t),
+        Math.round(a[1] + (b[1] - a[1]) * t),
+        Math.round(a[2] + (b[2] - a[2]) * t),
+      ];
+    }
+
+    function paletteAt(t) {
+      if (palLen === 1) return palette[0];
+      const pos = (t % 1) * palLen;
+      const i = Math.floor(pos) % palLen;
+      const j = (i + 1) % palLen;
+      return lerpColor(palette[i], palette[j], pos - Math.floor(pos));
+    }
+
+    for (let py = 0; py < h; py++) {
+      for (let px = 0; px < w; px++) {
+        const pxReal = px * scale + cx;
+        const pxImag = py * scale + cy;
+
+        let zr = z0FromPixel ? pxReal : 0;
+        let zi = z0FromPixel ? pxImag : 0;
+        const cr = cFromParams ? cReal : pxReal;
+        const ci = cFromParams ? cImag : pxImag;
+
+        let iter = 0;
+
+        while (iter < maxIter && zr * zr + zi * zi < 4) {
+          [zr, zi] = type.iterate(zr, zi, cr, ci);
+          iter++;
+        }
+
+        let smoothT = 0;
+        if (iter < maxIter) {
+          const mod = zr * zr + zi * zi;
+          smoothT = (iter + 1 - Math.log(Math.log(mod) * 0.5) / Math.LN2) / maxIter;
+          smoothT = Math.max(0, Math.min(1, smoothT));
+        }
+
+        const idx = (py * w + px) * 4;
+        const [r, g, b] = iter >= maxIter ? [0, 0, 0] : paletteAt(smoothT);
+        data[idx] = r;
+        data[idx + 1] = g;
+        data[idx + 2] = b;
+        data[idx + 3] = 255;
+      }
+    }
+
+    target.putImageData(imageData, 0, 0);
+  }
+
+  function getOutputJson(text) {
+    const tokens = tokenize(text);
+    const colorMapping = buildColorMapping(tokens);
+    const params = getParamsFromUI();
+    const equation = getEquation(params, fractalTypeSelect.value);
+
+    const colorMappingFormatted = {};
+    for (const [k, v] of Object.entries(colorMapping)) {
+      colorMappingFormatted[k] = v;
+    }
+
+    return {
+      equation,
+      text: text || "",
+      parameters: {
+        cReal: params.cReal,
+        cImag: params.cImag,
+        zoom: params.zoom,
+        offsetX: params.offsetX,
+        offsetY: params.offsetY,
+        maxIter: params.maxIter,
+      },
+      colorMapping: colorMappingFormatted,
+    };
+  }
+
+  function updateJsonDisplay(text) {
+    const json = getOutputJson(text);
+    jsonOutput.textContent = JSON.stringify(json, null, 2);
+  }
+
+  function update() {
+    const text = textInput.value;
+    renderFractal(text);
+    updateJsonDisplay(text);
+  }
+
+  let debounceTimer;
+  textInput.addEventListener("input", () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(update, 80);
+  });
+
+  fractalTypeSelect.addEventListener("change", () => {
+    toggleJuliaParams();
+    update();
+  });
+
+  [paramCReal, paramCImag, paramZoom, paramOffsetX, paramOffsetY, paramMaxIter].forEach((input) => {
+    input.addEventListener("change", update);
+    input.addEventListener("input", () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(update, 80);
+    });
+  });
+
+  deriveFromTextBtn.addEventListener("click", () => {
+    const params = deriveFractalParamsFromText(textInput.value);
+    setParamsToUI(params);
+    update();
+  });
+
+  randomizeBtn.addEventListener("click", () => {
+    colorSeed = Math.random().toString(36) + Date.now();
+    update();
+  });
+
+  downloadJsonBtn.addEventListener("click", () => {
+    const json = getOutputJson(textInput.value);
+    const blob = new Blob([JSON.stringify(json, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.download = "fractal.json";
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
+  });
+
+  function escapeCsvField(str) {
+    if (/[",\n\r]/.test(str)) {
+      return '"' + str.replace(/"/g, '""') + '"';
+    }
+    return str;
+  }
+
+  downloadCsvBtn.addEventListener("click", () => {
+    const tokens = tokenize(textInput.value);
+    const colorMapping = buildColorMapping(tokens);
+    const rows = [["word", "R", "G", "B"]];
+    for (const [word, rgb] of Object.entries(colorMapping)) {
+      rows.push([escapeCsvField(word), rgb[0], rgb[1], rgb[2]]);
+    }
+    const csv = rows.map((r) => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.download = "fractal-colors.csv";
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
+  });
+
+  saveBtn.addEventListener("click", () => {
+    const scale = parseInt(exportScaleSelect.value, 10);
+    const exportW = W * scale;
+    const exportH = H * scale;
+
+    const offscreen = document.createElement("canvas");
+    offscreen.width = exportW;
+    offscreen.height = exportH;
+    const offCtx = offscreen.getContext("2d");
+
+    renderFractal(textInput.value, exportW, exportH, offCtx);
+
+    const link = document.createElement("a");
+    link.download = "fractal.png";
+    link.href = offscreen.toDataURL("image/png");
+    link.click();
+  });
+
+  toggleJuliaParams();
+  update();
+})();
+  </script>
+</body>
+</html>
